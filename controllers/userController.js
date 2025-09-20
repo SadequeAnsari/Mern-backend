@@ -22,7 +22,13 @@ const registerUser = async (req, res) => {
       level: '0'
     });
     const token = jwt.sign({ email: createdUser.email, userid: createdUser._id }, process.env.JWT_SECRET);
-    res.cookie("Token", token);
+    // res.cookie("Token", token);
+     res.cookie("Token", token, {
+      httpOnly: true,
+      secure: true, // Only send cookie over HTTPS
+      sameSite: 'none', // Allow cross-site requests
+      expires: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000) // 90 days
+    });
     res.json({ message: 'User registered successfully!', user: createdUser });
   } catch (error) {
     console.error(error);
@@ -44,7 +50,14 @@ const loginUser = async (req, res) => {
       return res.status(400).json({ message: "Invalid email/userid or password" });
     }
     const token = jwt.sign({ email: user.email, userid: user._id }, process.env.JWT_SECRET);
-    res.cookie("Token", token);
+    // res.cookie("Token", token);
+    res.cookie("Token", token, {
+      httpOnly: true,
+      secure: true, // Only send cookie over HTTPS
+      sameSite: 'none', // Allow cross-site requests
+      expires: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000) // 90 days
+    });
+    
     req.session.userId = user._id;
     res.json({ message: "Login successful", user });
   } catch (error) {
