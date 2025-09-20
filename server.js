@@ -19,7 +19,7 @@ app.use(cors({
 }));
 
 
-// const allowedOrigins = ['https://mern-frontend-eta-self.vercel.app', , 'http://localhost:5173'];
+const allowedOrigins = ['https://mern-frontend-eta-self.vercel.app', , 'http://localhost:5173'];
 // app.use(cors({
 //   origin: function(origin, callback) {
 //     // Allow requests with no origin (like mobile apps or curl requests)
