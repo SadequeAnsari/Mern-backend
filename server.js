@@ -36,13 +36,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(cookieParser());
-app.use(session({
-  // ... other options
-  cookie: {
-    secure: true, // required for HTTPS
-    sameSite: 'none' // required for cross-site cookies
-  }
-}));
+
 
 // Use the routes
 app.use(allRoutes);
