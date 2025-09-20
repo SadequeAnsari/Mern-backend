@@ -1,10 +1,11 @@
+require('dotenv').config();
+
 const express = require("express");
 const app = express();
 const path = require("path");
 const cookieParser = require("cookie-parser");
 const cors = require('cors');
 const session = require('express-session');
-require('dotenv').config();
 
 const connectDB = require("./database/db");
 const allRoutes = require("./routes");
@@ -38,6 +39,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(cookieParser());
 app.set("trust proxy", 1);
+
 app.use(session({
   name: 'my-app-session', // A unique name for your session cookie
   secret: process.env.SESSION_SECRET, // Use a strong, random string from a .env file
