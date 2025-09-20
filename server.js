@@ -1,9 +1,78 @@
+// const express = require("express");
+// const app = express();
+// const path = require("path");
+// const cookieParser = require("cookie-parser");
+// const cors = require('cors');
+// const session = require('express-session');
+// require('dotenv').config();
+
+// const connectDB = require("./database/db");
+// const allRoutes = require("./routes");
+// const { otps, verificationCodes } = require("./utils/inMemoryStore");
+
+// // Connect to the database
+// connectDB();
+
+// // CORS setup
+// // app.use(cors({
+// //   origin: process.env.CORS_ORIGIN,
+// //   credentials: true
+// // }));
+
+
+// const allowedOrigins = ['https://mern-frontend-eta-self.vercel.app'];
+// app.use(cors({
+//   origin: function(origin, callback) {
+//     if (!origin) return callback(null, true);
+//     if (allowedOrigins.indexOf(origin) === -1) {
+//       const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+//       return callback(new Error(msg), false);
+//     }
+//     return callback(null, true);
+//   },
+//   credentials: true // Add this line
+// }));
+
+// app.use(express.json());
+// app.use(express.urlencoded({ extended: true }));
+// app.use(express.static(path.join(__dirname, 'public')));
+// app.use(cookieParser());
+// app.set("trust proxy", 1);
+// app.use(session({
+//   name: 'my-app-session', // A unique name for your session cookie
+//   secret: process.env.SESSION_SECRET, // Use a strong, random string from a .env file
+//   resave: false,
+//   saveUninitialized: false,
+//   cookie: {
+//     secure: true,
+//     sameSite: 'none',
+//   }
+// }));
+
+// // Use the routes
+// app.use(allRoutes);
+
+// const PORT = process.env.PORT || 4000;
+
+// app.get('/', (req, res) => {
+//   res.send('API is running...');
+// });
+
+
+// app.listen(PORT, () => {
+//   console.log(`Server is running on port ${PORT}`);
+// });
+
+
+
+
+
 const express = require("express");
 const app = express();
 const path = require("path");
 const cookieParser = require("cookie-parser");
 const cors = require('cors');
-const session = require('express-session');
+const session = require('express-session'); // Now correctly imported
 require('dotenv').config();
 
 const connectDB = require("./database/db");
@@ -14,12 +83,6 @@ const { otps, verificationCodes } = require("./utils/inMemoryStore");
 connectDB();
 
 // CORS setup
-// app.use(cors({
-//   origin: process.env.CORS_ORIGIN,
-//   credentials: true
-// }));
-
-
 const allowedOrigins = ['https://mern-frontend-eta-self.vercel.app'];
 app.use(cors({
   origin: function(origin, callback) {
@@ -30,35 +93,33 @@ app.use(cors({
     }
     return callback(null, true);
   },
-  credentials: true // Add this line
+  credentials: true
 }));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(cookieParser());
+
+// Add this line for secure deployment
 app.set("trust proxy", 1);
+
+// Session middleware setup
 app.use(session({
-  name: 'my-app-session', // A unique name for your session cookie
-  secret: process.env.SESSION_SECRET, // Use a strong, random string from a .env file
+  name: 'my-app-session',
+  secret: process.env.SESSION_SECRET, // Make sure this is defined in your .env file
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: true,
-    sameSite: 'none',
+    secure: true, // required for HTTPS
+    sameSite: 'none' // required for cross-site cookies
   }
 }));
 
-// Use the routes
+// Include all routes after middleware
 app.use(allRoutes);
 
-const PORT = process.env.PORT || 4000;
-
-app.get('/', (req, res) => {
-  res.send('API is running...');
-});
-
-
+const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });
