@@ -36,7 +36,17 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(cookieParser());
-
+app.set("trust proxy", 1);
+app.use(session({
+  name: 'my-app-session', // A unique name for your session cookie
+  secret: process.env.SESSION_SECRET, // Use a strong, random string from a .env file
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: true,
+    sameSite: 'none',
+  }
+}));
 
 // Use the routes
 app.use(allRoutes);
