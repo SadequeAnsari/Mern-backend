@@ -1,0 +1,88 @@
+const postModel = require("../models/postModel");
+
+const createPost = async (req, res) => {
+  try {
+    const { content } = req.body;
+    if (!content) return res.status(400).json({ message: "Content is required" });
+    if (req.user.level === "0") {
+      return res.status(403).json({ message: "Account not verified. Please verify your email to create posts." });
+    }
+    const newPost = await postModel.create({ content, author: req.user._id });
+    await newPost.populate('author', 'username _id');
+    res.status(201).json(newPost);
+  } catch (error) {
+    console.error("Error creating post:", error);
+    res.status(500).json({ message: "Error creating post" });
+  }
+};
+
+const getAllPosts = async (req, res) => {
+  try {
+    const posts = await postModel.find().populate('author', 'username _id').sort({ createdAt: -1 });
+    res.json(posts);
+  } catch (error) {
+    console.error("Error fetching posts:", error);
+    res.status(500).json({ message: "Error fetching posts" });
+  }
+};
+
+
+
+
+const getPostById = async (req, res) => {
+  try {
+    const postId = req.params.postId;
+    const post = await postModel.findById(postId).populate('author', 'username _id');
+    if (!post) {
+      return res.status(404).json({ message: "Post not found" });
+    }
+    res.json(post);
+  } catch (error) {
+    console.error("Error fetching single post:", error);
+    res.status(500).json({ message: "Error fetching post" });
+  }
+};
+
+const updatePost = async (req, res) => {
+  try {
+    const { content } = req.body;
+    const post = await postModel.findById(req.params.id);
+    if (!post) {
+      return res.status(404).json({ message: "Post not found" });
+    }
+    if (post.author.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: "You are not authorized to edit this post" });
+    }
+    post.content = content;
+    const updatedPost = await post.save();
+    await updatedPost.populate('author', 'username _id');
+    res.json(updatedPost);
+  } catch (error) {
+    res.status(500).json({ message: "Error updating post" });
+  }
+};
+
+const deletePost = async (req, res) => {
+  try {
+    const postId = req.params.postId;
+    const post = await postModel.findById(postId);
+    if (!post) {
+      return res.status(404).json({ message: "Post not found" });
+    }
+    if (post.author.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: "You are not authorized to delete this post" });
+    }
+    await postModel.findByIdAndDelete(postId);
+    res.json({ message: "Post deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Error deleting post" });
+  }
+};
+
+module.exports = {
+  createPost,
+  getAllPosts,
+  getPostById,
+  updatePost,
+  deletePost
+};
