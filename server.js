@@ -23,25 +23,29 @@ connectDB();
 const allowedOrigins = ['https://mern-frontend-eta-self.vercel.app'];
 app.use(cors({
   origin: function(origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
     if (allowedOrigins.indexOf(origin) === -1) {
       const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
       return callback(new Error(msg), false);
     }
     return callback(null, true);
-  }
+  },
+  credentials: true // Add this line
 }));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(cookieParser());
+app.set("trust proxy", 1);
 app.use(session({
-  // ... other options
+  name: 'my-app-session', // A unique name for your session cookie
+  secret: process.env.SESSION_SECRET, // Use a strong, random string from a .env file
+  resave: false,
+  saveUninitialized: false,
   cookie: {
-    secure: true, // required for HTTPS
-    sameSite: 'none' // required for cross-site cookies
+    secure: true,
+    sameSite: 'none',
   }
 }));
 
