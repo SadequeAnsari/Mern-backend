@@ -9,6 +9,7 @@ const session = require('express-session');
 
 const connectDB = require("./database/db");
 const allRoutes = require("./routes");
+const userRoutes = require('./routes/userRoutes');
 const { otps, verificationCodes } = require("./utils/inMemoryStore");
 
 // Connect to the database
@@ -53,6 +54,7 @@ app.use(session({
 
 // Use the routes
 app.use(allRoutes);
+app.use('/api', userRoutes);
 
 const PORT = process.env.PORT || 4000;
 

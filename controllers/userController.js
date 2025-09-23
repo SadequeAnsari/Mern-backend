@@ -363,6 +363,28 @@ const getBookmarks = async (req, res) => {
 
 
 
+const removeBookmark = async (req, res) => {
+    try {
+        const userId = req.user._id;
+        const { postId } = req.params;
+
+        const updatedUser = await userModel.findByIdAndUpdate(
+            userId,
+            { $pull: { bookmarks: postId } },
+            { new: true }
+        );
+
+        if (!updatedUser) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        res.status(200).json({ message: "Bookmark removed successfully!" });
+    } catch (error) {
+        console.error("Error removing bookmark:", error);
+        res.status(500).json({ message: "Server error" });
+    }
+};
+
 
 
 module.exports = {
@@ -385,5 +407,6 @@ module.exports = {
   checkVerificationCode,
   performVerificationAction,
   addBookmark, 
-  getBookmarks
+  getBookmarks,
+  removeBookmark
 };
