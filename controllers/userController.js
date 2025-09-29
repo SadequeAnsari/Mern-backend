@@ -385,17 +385,29 @@ const removeBookmark = async (req, res) => {
     }
 };
 
+
 const getUserAndPosts = async (req, res) => {
     try {
         const { userId } = req.params;
 
         // 1. Fetch the user details
         const user = await userModel.findById(userId).select('-password'); 
-        // ... (error handling for user not found) ...
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
 
-        // 2. Fetch all posts by that user
-        // 🔑 FIX: Added 'statusCode: '1'' filter to ensure only PUBLISHED posts are shown on the public profile.
-        const userPosts = await postModel.find({ author: userId, statusCode: '1' }) 
+        // --- Conditional Post Visibility Logic ---
+        let queryFilter = { author: userId };
+        
+        // If the viewer is NOT logged in (no req.user) OR the viewer's ID does NOT match the author's ID (userId)
+        // Then, only show published posts (statusCode: '1').
+        // If they ARE the author, we skip this and show all posts.
+        if (!req.user || req.user._id.toString() !== userId.toString()) {
+            queryFilter.statusCode = '1';
+        }
+
+        // 2. Fetch posts based on the dynamic filter
+        const userPosts = await postModel.find(queryFilter) 
             .populate('author', 'username email level') 
             .sort({ createdAt: -1 });
 
@@ -410,7 +422,6 @@ const getUserAndPosts = async (req, res) => {
         res.status(500).json({ message: 'Server error while fetching user data.' });
     }
 };
-
 
 
 module.exports = {
