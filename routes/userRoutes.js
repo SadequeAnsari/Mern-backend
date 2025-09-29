@@ -22,12 +22,18 @@ router.put("/api/users/:id/level", authenticate, authorizeLevel2, userController
 router.post("/api/verification/request", authenticate, userController.requestVerificationCode);
 router.post("/api/verification/check-code", authenticate, authorizeLevel5, userController.checkVerificationCode);
 router.post("/api/verification/action", authenticate, authorizeLevel5, userController.performVerificationAction);
+
+
+// Add these two new routes to fix the bookmarking issue
+// router.post('/api/bookmarks/:postId', authenticate, userController.addBookmark);
+// router.get('/api/bookmarks', authenticate, userController.getBookmarks);
+
 // Add these three new routes to fix the bookmarking issue
 router.post('/api/bookmarks/:postId', authenticate, userController.addBookmark);
 router.delete('/api/bookmarks/:postId', authenticate, userController.removeBookmark); // Corrected this route
 router.get('/api/bookmarks', authenticate, userController.getBookmarks);
 
 
-router.get('/profile/:userId', userController.getUserAndPosts);
+router.get('/profile/:userId',authenticate, userController.getUserAndPosts);
 
 module.exports = router;

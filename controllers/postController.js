@@ -60,14 +60,12 @@ const getPostsByAuthorId = async (req, res) => {
     
     // --- Determine the Query Filter ---
     let queryFilter = { author: authorId };
-    
     if (!req.user || req.user._id.toString() !== authorId.toString()) {
       // If the viewer is NOT the author, or not logged in, only fetch Published posts.
       queryFilter.statusCode = '1';
     } 
     // If the viewer IS the author, no further status code filter is needed (they see all their posts).
-    
-    const posts = await postModel.find(queryFilter)
+      const posts = await postModel.find(queryFilter)
       .populate('author', 'username _id') // Changed 'id' to '_id' for consistency with postModel.findById in getPostById
       .sort({ createdAt: -1 });
       
