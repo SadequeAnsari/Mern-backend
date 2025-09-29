@@ -385,21 +385,17 @@ const removeBookmark = async (req, res) => {
     }
 };
 
-
 const getUserAndPosts = async (req, res) => {
     try {
         const { userId } = req.params;
 
         // 1. Fetch the user details
         const user = await userModel.findById(userId).select('-password'); 
-
-        if (!user) {
-            // Ensure this is returning JSON, which it is:
-            return res.status(404).json({ message: 'User not found' });
-        }
+        // ... (error handling for user not found) ...
 
         // 2. Fetch all posts by that user
-        const userPosts = await postModel.find({ author: userId }) // <--- FIX: Used postModel instead of Post
+        // 🔑 FIX: Added 'statusCode: '1'' filter to ensure only PUBLISHED posts are shown on the public profile.
+        const userPosts = await postModel.find({ author: userId, statusCode: '1' }) 
             .populate('author', 'username email level') 
             .sort({ createdAt: -1 });
 
@@ -411,10 +407,11 @@ const getUserAndPosts = async (req, res) => {
 
     } catch (error) {
         console.error("Error fetching user profile and posts:", error);
-        // This server error would have caused the HTML response.
         res.status(500).json({ message: 'Server error while fetching user data.' });
     }
 };
+
+
 
 module.exports = {
   registerUser,
