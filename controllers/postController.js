@@ -53,19 +53,31 @@ const getPostById = async (req, res) => {
 };
 
 
+
 const getPostsByAuthorId = async (req, res) => {
   try {
     const authorId = req.params.authorId;
-    // ONLY fetch posts by this author that have statusCode '1' (Published)
-    const posts = await postModel.find({ author: authorId, statusCode: '1' })
-      .populate('author', 'username id')
+    
+    // --- Determine the Query Filter ---
+    let queryFilter = { author: authorId };
+    
+    if (!req.user || req.user._id.toString() !== authorId.toString()) {
+      // If the viewer is NOT the author, or not logged in, only fetch Published posts.
+      queryFilter.statusCode = '1';
+    } 
+    // If the viewer IS the author, no further status code filter is needed (they see all their posts).
+    
+    const posts = await postModel.find(queryFilter)
+      .populate('author', 'username _id') // Changed 'id' to '_id' for consistency with postModel.findById in getPostById
       .sort({ createdAt: -1 });
+      
     res.json(posts);
   } catch (error) {
     console.error('Error fetching posts by author ID:', error);
     res.status(500).json({ message: 'Error fetching user posts' });
   }
 };
+
 
 const updatePost = async (req, res) => {
   try {
