@@ -16,7 +16,6 @@ const userSchema = mongoose.Schema({
     isDeleted: { type: Boolean, default: false },
     bookmarks: [{
         type: mongoose.Schema.Types.ObjectId,
-        // Change 'Post' to 'post' to match your post model
         ref: 'post' 
     }]
 }, { timestamps: true });

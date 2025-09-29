@@ -17,7 +17,12 @@ const authenticate = (req, res, next) => {
       });
     }
     try {
-      const user = await userModel.findById(decoded.userid);
+      // const user = await userModel.findById(decoded.userid);
+      // 🔑 FIX: Use .select('_id level') and .lean() to ensure only required fields are 
+      // fetched and returned as a plain, simple JavaScript object.
+      const user = await userModel.findById(decoded.userid).select('_id level').lean();
+      
+
       if (!user) {
         return res.status(404).json({
           message: "User not found"

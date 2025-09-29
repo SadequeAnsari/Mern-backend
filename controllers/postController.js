@@ -16,9 +16,12 @@ const createPost = async (req, res) => {
   }
 };
 
+
+// Corrected
 const getAllPosts = async (req, res) => {
   try {
-    const posts = await postModel.find().populate('author', 'username _id').sort({ createdAt: -1 });
+    // ONLY fetch posts with statusCode '1' (Published)
+    const posts = await postModel.find({ statusCode: '1' }).populate('author', 'username _id').sort({ createdAt: -1 });
     res.json(posts);
   } catch (error) {
     console.error("Error fetching posts:", error);
@@ -27,19 +30,40 @@ const getAllPosts = async (req, res) => {
 };
 
 
-
-
 const getPostById = async (req, res) => {
   try {
     const postId = req.params.postId;
     const post = await postModel.findById(postId).populate('author', 'username _id');
+    
     if (!post) {
       return res.status(404).json({ message: "Post not found" });
     }
+    
+    // 🔑 NEW SECURITY CHECK: If the post is a draft (statusCode: '0'), 
+    // only the author (req.user._id) should be allowed to view it.
+    if (post.statusCode === '0' && (!req.user || post.author._id.toString() !== req.user._id.toString())) {
+        return res.status(404).json({ message: "Post not found" }); // Respond with 404 to hide the existence of the draft
+    }
+
     res.json(post);
   } catch (error) {
-    console.error("Error fetching single post:", error);
+    console.error("Error fetching post:", error);
     res.status(500).json({ message: "Error fetching post" });
+  }
+};
+
+
+const getPostsByAuthorId = async (req, res) => {
+  try {
+    const authorId = req.params.authorId;
+    // ONLY fetch posts by this author that have statusCode '1' (Published)
+    const posts = await postModel.find({ author: authorId, statusCode: '1' })
+      .populate('author', 'username id')
+      .sort({ createdAt: -1 });
+    res.json(posts);
+  } catch (error) {
+    console.error('Error fetching posts by author ID:', error);
+    res.status(500).json({ message: 'Error fetching user posts' });
   }
 };
 
@@ -62,21 +86,45 @@ const updatePost = async (req, res) => {
   }
 };
 
+
 const deletePost = async (req, res) => {
   try {
     const postId = req.params.postId;
     const post = await postModel.findById(postId);
+    
     if (!post) {
       return res.status(404).json({ message: "Post not found" });
     }
-    if (post.author.toString() !== req.user._id.toString()) {
+    
+    // --- AUTHORIZATION LOGIC ---
+    // 1. Check if req.user exists (set by your 'authenticate' middleware)
+    if (!req.user || !req.user._id) {
+        return res.status(401).json({ message: "Authentication required." });
+    }
+
+    // Safely get and convert the user's level to a number (e.g., '7' -> 7)
+    // If req.user.level is missing, it converts to NaN, which prevents unauthorized deletion.
+    const userLevel = Number(req.user.level); 
+    
+    // Check if the user is the author OR has level 7 or higher
+    const isAuthor = post.author.toString() === req.user._id.toString();
+    const hasAdminRights = !isNaN(userLevel) && userLevel >= 7; 
+    
+    // If not the author AND not admin, deny access.
+    if (!isAuthor && !hasAdminRights) {
+      // This returns the 403 Forbidden error you are seeing
       return res.status(403).json({ message: "You are not authorized to delete this post" });
     }
+
+    // --- EXECUTION ---
     await postModel.findByIdAndDelete(postId);
+    
     res.json({ message: "Post deleted successfully" });
   } catch (error) {
+    console.error("Error deleting post:", error);
     res.status(500).json({ message: "Error deleting post" });
   }
+  console.log("User attempting delete:", req.user);
 };
 
 module.exports = {
@@ -84,5 +132,6 @@ module.exports = {
   getAllPosts,
   getPostById,
   updatePost,
-  deletePost
+  deletePost,
+  getPostsByAuthorId
 };

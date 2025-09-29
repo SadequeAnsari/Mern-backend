@@ -1,3 +1,4 @@
+require('./scheduler');
 require('dotenv').config();
 
 const express = require("express");

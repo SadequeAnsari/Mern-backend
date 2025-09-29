@@ -27,7 +27,7 @@ const registerUser = async (req, res) => {
       httpOnly: true,
       secure: true, // Only send cookie over HTTPS
       sameSite: 'none', // Allow cross-site requests
-      expires: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000) // 90 days
+      expires: new Date(Date.now() + 24 * 60 * 60 * 1000) // 1 days
     });
     res.json({ message: 'User registered successfully!', user: createdUser });
   } catch (error) {
@@ -206,7 +206,7 @@ const getAllUsers = async (req, res) => {
 
 const getLevel5Users = async (req, res) => {
   try {
-    const level5Users = await userModel.find({ level: { $gte: "5" } }, 'username email _id');
+    const level5Users = await userModel.find({ level: 5 }, 'username email _id');
     res.json(level5Users);
   } catch (error) {
     res.status(500).json({ message: "Error fetching level 5 users." });
@@ -386,6 +386,35 @@ const removeBookmark = async (req, res) => {
 };
 
 
+const getUserAndPosts = async (req, res) => {
+    try {
+        const { userId } = req.params;
+
+        // 1. Fetch the user details
+        const user = await userModel.findById(userId).select('-password'); 
+
+        if (!user) {
+            // Ensure this is returning JSON, which it is:
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        // 2. Fetch all posts by that user
+        const userPosts = await postModel.find({ author: userId }) // <--- FIX: Used postModel instead of Post
+            .populate('author', 'username email level') 
+            .sort({ createdAt: -1 });
+
+        // 3. Combine and send the data
+        res.status(200).json({
+            userProfile: user,
+            posts: userPosts
+        });
+
+    } catch (error) {
+        console.error("Error fetching user profile and posts:", error);
+        // This server error would have caused the HTML response.
+        res.status(500).json({ message: 'Server error while fetching user data.' });
+    }
+};
 
 module.exports = {
   registerUser,
@@ -408,5 +437,6 @@ module.exports = {
   performVerificationAction,
   addBookmark, 
   getBookmarks,
-  removeBookmark
+  removeBookmark,
+  getUserAndPosts
 };
