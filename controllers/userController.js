@@ -386,11 +386,12 @@ const removeBookmark = async (req, res) => {
 };
 
 
+
 const getUserAndPosts = async (req, res) => {
     try {
         const { userId } = req.params;
-
-        // 1. Fetch the user details
+        
+        // 1. Fetch user profile
         const user = await userModel.findById(userId).select('-password'); 
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
@@ -399,11 +400,13 @@ const getUserAndPosts = async (req, res) => {
         // --- Conditional Post Visibility Logic ---
         let queryFilter = { author: userId };
         
-        // If the viewer is NOT logged in (no req.user) OR the viewer's ID does NOT match the author's ID (userId)
-        // Then, only show published posts (statusCode: '1').
-        // If they ARE the author, we skip this and show all posts.
-        if (!req.user || req.user._id.toString() !== userId.toString()) {
-            queryFilter.statusCode = '1';
+        // Determine if the viewer is the author
+        const isAuthor = req.user && req.user._id.toString() === userId.toString();
+
+        // MODIFIED LOGIC: If the viewer is NOT the author, only show published posts (statusCode: '2').
+        // If they ARE the author, we skip this and show all posts (0, 1, 2).
+        if (!isAuthor) {
+            queryFilter.statusCode = '2'; // Only show status 2 (published) to non-authors
         }
 
         // 2. Fetch posts based on the dynamic filter
@@ -422,7 +425,6 @@ const getUserAndPosts = async (req, res) => {
         res.status(500).json({ message: 'Server error while fetching user data.' });
     }
 };
-
 
 module.exports = {
   registerUser,

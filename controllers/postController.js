@@ -20,8 +20,8 @@ const createPost = async (req, res) => {
 
 const getAllPosts = async (req, res) => {
   try {
-    // ALWAYS fetch posts with statusCode '1' (Published) for the global feed.
-    const posts = await postModel.find({ statusCode: '1' }) 
+    // MODIFIED: ONLY fetch posts with statusCode '2' (Published) for the global feed.
+    const posts = await postModel.find({ statusCode: '2' }) 
       .populate('author', 'username _id')
       .sort({ createdAt: -1 });
       
@@ -31,7 +31,6 @@ const getAllPosts = async (req, res) => {
     res.status(500).json({ message: "Error fetching posts" });
   }
 };
-
 
 const getPostById = async (req, res) => {
   try {
@@ -80,21 +79,35 @@ const getPostsByAuthorId = async (req, res) => {
   }
 };
 
+
 const updatePost = async (req, res) => {
   try {
+    const { id } = req.params;
     const { content } = req.body;
-    const post = await postModel.findById(req.params.id);
+
+    const post = await postModel.findById(id);
+
     if (!post) {
       return res.status(404).json({ message: "Post not found" });
     }
+
+    // Authorization Check: only author can edit
     if (post.author.toString() !== req.user._id.toString()) {
       return res.status(403).json({ message: "You are not authorized to edit this post" });
     }
-    post.content = content;
-    const updatedPost = await post.save();
-    await updatedPost.populate('author', 'username _id');
-    res.json(updatedPost);
+
+    if (content) {
+      post.content = content;
+      // NEW LOGIC: Reset the publish timer (by updating createdAt) and set status to '1'
+      post.createdAt = Date.now(); // This restarts the 3-hour timer
+      post.statusCode = '1';       // Status 1: Edited/Pending publication (Author Only)
+    }
+
+    await post.save();
+    await post.populate('author', 'username _id');
+    res.json(post);
   } catch (error) {
+    console.error("Error updating post:", error);
     res.status(500).json({ message: "Error updating post" });
   }
 };

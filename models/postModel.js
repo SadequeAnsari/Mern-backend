@@ -11,7 +11,10 @@ const postSchema = mongoose.Schema({
     },
     statusCode: {
         type: String,
-        default: '0' // '0' for draft, '1' for published
+        // '0': Initial/Draft (Author Only)
+        // '1': Edited/Pending Publication (Author Only - timer reset)
+        // '2': Published (All Users)
+        default: '0' 
     }
 });
 
