@@ -17,7 +17,6 @@ const createPost = async (req, res) => {
 };
 
 
-
 const getAllPosts = async (req, res) => {
   try {
     // MODIFIED: ONLY fetch posts with statusCode '2' (Published) for the global feed.
@@ -78,6 +77,7 @@ const getPostsByAuthorId = async (req, res) => {
     res.status(500).json({ message: 'Error fetching user posts' });
   }
 };
+
 
 
 const updatePost = async (req, res) => {

@@ -195,14 +195,47 @@ const resetPassword = async (req, res) => {
   }
 };
 
+
+
+
 const getAllUsers = async (req, res) => {
   try {
-    const users = await userModel.find({}, 'username email level');
+    let query = {};
+    const requestingUserLevel = parseInt(req.user.level);
+
+    // NEW LOGIC: Apply view permissions based on user level
+    switch (requestingUserLevel) {
+      case 6:
+        // Level 6 can see users from level 0 to 5
+        query.level = { $lt: '6' };
+        break;
+      case 7:
+        // Level 7 can see users from level 0 to 6
+        query.level = { $lte: '6' };
+        break;
+      case 8:
+        // Level 8 can see users from level 5 to 7
+        query.level = { $gte: '5', $lte: '7' };
+        break;
+      // Levels 9+ (and any other unhandled cases) will see all users
+      default:
+        // No filter for higher levels
+        break;
+    }
+    
+    // Exclude the current user from the list
+    const users = await userModel.find(query, 'username email level').where('_id').ne(req.user.id);
     res.json(users);
   } catch (error) {
+    console.error("Error fetching user list:", error);
     res.status(500).json({ message: "Error fetching user list." });
   }
 };
+
+
+
+
+
 
 const getLevel5Users = async (req, res) => {
   try {
@@ -213,24 +246,74 @@ const getLevel5Users = async (req, res) => {
   }
 };
 
+
 const updateUserLevel = async (req, res) => {
   try {
-    const userId = req.params.id;
-    const { level } = req.body;
-    if (level === undefined || isNaN(level) || level < 0 || level > 9) {
-      return res.status(400).json({ message: "Invalid level provided." });
+    const userIdToUpdate = req.params.id;
+    const { level: newLevelString } = req.body;
+    const requestingUserLevel = parseInt(req.user.level);
+    const newLevel = parseInt(newLevelString);
+
+    // 1. Basic Validation
+    if (isNaN(newLevel) || newLevel < 0 || newLevel > 9) {
+      return res.status(400).json({ message: "Invalid level provided. Must be between 0 and 9." });
     }
+    
+    // 2. Fetch the user being updated
+    const userToUpdate = await userModel.findById(userIdToUpdate);
+    if (!userToUpdate) {
+        return res.status(404).json({ message: "User not found." });
+    }
+    const userToUpdateLevel = parseInt(userToUpdate.level);
+
+    // 3. NEW LOGIC: Apply edit permissions based on user level
+    switch (requestingUserLevel) {
+      case 6:
+        // Level 6 can only edit users between 0-5 and set levels between 0-5
+        if (userToUpdateLevel >= 6) {
+            return res.status(403).json({ message: "Forbidden: You can only edit users with a level of 0-5." });
+        }
+        if (newLevel >= 6) {
+            return res.status(403).json({ message: "Forbidden: You can only set a level between 0-5." });
+        }
+        break;
+      case 7:
+        // Level 7 can only edit users between 0-6 and set levels between 0-6
+        if (userToUpdateLevel >= 7) {
+            return res.status(403).json({ message: "Forbidden: You can only edit users with a level of 0-6." });
+        }
+        if (newLevel >= 7) {
+            return res.status(403).json({ message: "Forbidden: You can only set a level between 0-6." });
+        }
+        break;
+      case 8:
+        // Level 8 can only edit users between 5-7 and set levels between 5-7
+        if (userToUpdateLevel < 5 || userToUpdateLevel > 7) {
+            return res.status(403).json({ message: "Forbidden: You can only edit users with a level of 5-7." });
+        }
+        if (newLevel < 5 || newLevel > 7) {
+            return res.status(403).json({ message: "Forbidden: You can only set a level between 5-7." });
+        }
+        break;
+      // Levels 9+ have no restrictions by default
+      default:
+        // Allow higher levels to make changes
+        break;
+    }
+    
+    // 4. Proceed with the update if all checks pass
     const updatedUser = await userModel.findByIdAndUpdate(
-      userId, { level: level }, { new: true, fields: 'username email level' }
+      userIdToUpdate, { level: newLevelString }, { new: true, fields: 'username email level' }
     );
-    if (!updatedUser) {
-      return res.status(404).json({ message: "User not found." });
-    }
     res.json(updatedUser);
+
   } catch (error) {
+    console.error("Error updating user level:", error);
     res.status(500).json({ message: "Error updating user level." });
   }
 };
+
+
 
 const requestVerificationCode = async (req, res) => {
   try {
