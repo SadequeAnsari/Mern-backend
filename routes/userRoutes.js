@@ -17,15 +17,15 @@ router.post('/set-userid', userController.setUserId);
 router.post('/forgot-password', userController.forgotPassword);
 router.post('/reset-password', userController.resetPassword);
 
-router.get("/api/users", authenticate, authorizeLevel2, authorizeLevel6Plus, userController.getAllUsers);
+router.get("/api/users", authenticate,  authorizeLevel5, userController.getAllUsers);
 
-router.put("/api/users/:id/level", authenticate, authorizeLevel6Plus, userController.updateUserLevel);
+router.put("/api/users/:id/level", authenticate,  authorizeLevel6Plus, userController.updateUserLevel);
 
 router.get("/api/users/level/5", authenticate, userController.getLevel5Users);
+// router.put("/api/users/:id/level", authenticate, authorizeLevel2, userController.updateUserLevel);
 router.post("/api/verification/request", authenticate, userController.requestVerificationCode);
 router.post("/api/verification/check-code", authenticate, authorizeLevel5, userController.checkVerificationCode);
 router.post("/api/verification/action", authenticate, authorizeLevel5, userController.performVerificationAction);
-
 
 
 router.post('/api/bookmarks/:postId', authenticate, userController.addBookmark);
