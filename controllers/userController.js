@@ -195,6 +195,14 @@ const resetPassword = async (req, res) => {
   }
 };
 
+// const getAllUsers = async (req, res) => {
+//   try {
+//     const users = await userModel.find({}, 'username email level');
+//     res.json(users);
+//   } catch (error) {
+//     res.status(500).json({ message: "Error fetching user list." });
+//   }
+// };
 
 
 
@@ -245,6 +253,27 @@ const getLevel5Users = async (req, res) => {
     res.status(500).json({ message: "Error fetching level 5 users." });
   }
 };
+
+// const updateUserLevel = async (req, res) => {
+//   try {
+//     const userId = req.params.id;
+//     const { level } = req.body;
+//     if (level === undefined || isNaN(level) || level < 0 || level > 9) {
+//       return res.status(400).json({ message: "Invalid level provided." });
+//     }
+//     const updatedUser = await userModel.findByIdAndUpdate(
+//       userId, { level: level }, { new: true, fields: 'username email level' }
+//     );
+//     if (!updatedUser) {
+//       return res.status(404).json({ message: "User not found." });
+//     }
+//     res.json(updatedUser);
+//   } catch (error) {
+//     res.status(500).json({ message: "Error updating user level." });
+//   }
+// };
+
+
 
 
 const updateUserLevel = async (req, res) => {
@@ -469,7 +498,6 @@ const removeBookmark = async (req, res) => {
 };
 
 
-
 const getUserAndPosts = async (req, res) => {
     try {
         const { userId } = req.params;
@@ -509,6 +537,32 @@ const getUserAndPosts = async (req, res) => {
     }
 };
 
+
+const getAuthUser = async (req, res) => {
+    // req.user is populated by the 'authMiddleware.js' when a valid cookie is present.
+    if (req.user) {
+        // Since authMiddleware.js uses .select('_id level'), 
+        // we need to fetch the full user details here if Home.jsx needs more than _id and level.
+        // If Home.jsx only needs _id and level, you can simply return req.user.
+        // Assuming Home.jsx needs more details like username for display:
+        try {
+            const fullUser = await userModel.findById(req.user._id).select('-password').lean();
+            if (!fullUser) {
+                return res.status(404).json({ message: "User data not found" });
+            }
+            return res.json(fullUser);
+        } catch (error) {
+            console.error("Error fetching full user details:", error);
+            return res.status(500).json({ message: "Server error fetching user data" });
+        }
+    } else {
+        // If req.user is null, return 401 Unauthorized
+        return res.status(401).json({ message: "Not authenticated" });
+    }
+};
+
+
+
 module.exports = {
   registerUser,
   loginUser,
@@ -531,5 +585,6 @@ module.exports = {
   addBookmark, 
   getBookmarks,
   removeBookmark,
-  getUserAndPosts
+  getUserAndPosts,
+  getAuthUser
 };

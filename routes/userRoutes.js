@@ -19,6 +19,11 @@ router.post('/reset-password', userController.resetPassword);
 
 router.get("/api/users", authenticate,  authorizeLevel5, userController.getAllUsers);
 
+// 🔑 FIX: This defines the missing endpoint '/user'
+// It uses 'authenticate' to verify the cookie and retrieve user data.
+// If your main server file mounts userRoutes at '/auth', this becomes /auth/user.
+router.get('/user', authenticate, userController.getAuthUser);
+
 router.put("/api/users/:id/level", authenticate,  authorizeLevel6Plus, userController.updateUserLevel);
 
 router.get("/api/users/level/5", authenticate, userController.getLevel5Users);
@@ -28,6 +33,11 @@ router.post("/api/verification/check-code", authenticate, authorizeLevel5, userC
 router.post("/api/verification/action", authenticate, authorizeLevel5, userController.performVerificationAction);
 
 
+// Add these two new routes to fix the bookmarking issue
+// router.post('/api/bookmarks/:postId', authenticate, userController.addBookmark);
+// router.get('/api/bookmarks', authenticate, userController.getBookmarks);
+
+// Add these three new routes to fix the bookmarking issue
 router.post('/api/bookmarks/:postId', authenticate, userController.addBookmark);
 router.delete('/api/bookmarks/:postId', authenticate, userController.removeBookmark); // Corrected this route
 router.get('/api/bookmarks', authenticate, userController.getBookmarks);
