@@ -2,12 +2,20 @@ const postModel = require("../models/postModel");
 
 const createPost = async (req, res) => {
   try {
-    const { content } = req.body;
-    if (!content) return res.status(400).json({ message: "Content is required" });
+    const { content, statusCode } = req.body; // MODIFIED: Accept statusCode
+    
+    // Validation for content and statusCode
+    const validStatusCodes = ['0', '1'];
+    if (!content || !validStatusCodes.includes(statusCode)) {
+      return res.status(400).json({ message: "Content and a valid status (Draft or Publish) are required." });
+    }
+
     if (req.user.level === "0") {
       return res.status(403).json({ message: "Account not verified. Please verify your email to create posts." });
     }
-    const newPost = await postModel.create({ content, author: req.user._id });
+    
+    // MODIFIED: Include statusCode in the new post document
+    const newPost = await postModel.create({ content, author: req.user._id, statusCode: statusCode });
     await newPost.populate('author', 'username _id');
     res.status(201).json(newPost);
   } catch (error) {
