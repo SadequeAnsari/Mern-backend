@@ -100,7 +100,7 @@ const getPostsByAuthorId = async (req, res) => {
     // Check if the authenticated viewer (req.user) is the author (authorId)
     // If NOT the author or NOT logged in, only fetch Published posts.
     if (!req.user || req.user._id.toString() !== authorId.toString()) {
-      queryFilter.statusCode = '1';
+      queryFilter.statusCode = '2';
     } 
     // If the viewer IS the author, no status code filter is applied, showing ALL posts.
     
