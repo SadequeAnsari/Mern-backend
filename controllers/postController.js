@@ -29,33 +29,34 @@ const createPost = async (req, res) => {
 
 const getAllPosts = async (req, res) => {
   try {
-    // 1. Get the authenticated user's ID
-    // req.user is populated by your 'authenticate' middleware from the cookie.
-    const userId = req.user ? req.user._id : null;
+ // TEMPORARY DEBUG: Check if the user ID is being read from the cookie
+    console.log("Authenticated User ID in getAllPosts:", req.user ? req.user._id : "NOT AUTHENTICATED");
 
-    // 2. Define the base query conditions
-    // The query must fetch posts that meet AT LEAST ONE of the conditions below.
+    // 1. Get the authenticated user's ID.
+    // This relies on your 'authenticate' middleware successfully reading the cookie.
+    const userId = req.user ? req.user._id : null; 
+
+    // 2. Define the mandatory condition: Fetch all "Published" posts (statusCode: '2') for everyone.
     let queryConditions = [
-      // Condition 1: Fetch all "Published" posts (statusCode: '2') for everyone.
       { statusCode: '2' },
     ];
 
-    // Condition 2: Add the user's private posts to the query IF the user is logged in.
+    // 3. Add the author-only condition IF the user is logged in.
     if (userId) {
       queryConditions.push({
         author: userId,
-        // Only fetch the current user's own Draft ('0') and Pending ('1') posts.
+        // Include the author's own drafted ('0') and edited/pending ('1') posts.
         statusCode: { $in: ['0', '1'] }
       });
     }
 
-    // 3. Combine all conditions using the MongoDB $or operator
-    // The query will match any document that satisfies one of the objects in the array.
+    // 4. Combine conditions using $or. If the user is logged in, this will be:
+    // (statusCode === '2') OR (author === userId AND statusCode IN ('0', '1'))
     let query = {
       $or: queryConditions
     };
 
-    // 4. Execute the final query
+    // 5. Execute the final query
     const posts = await postModel
       .find(query)
       .populate('author', 'username _id')
@@ -67,6 +68,7 @@ const getAllPosts = async (req, res) => {
     res.status(500).json({ message: "Error fetching posts" });
   }
 };
+
 
 const getPostById = async (req, res) => {
   try {
