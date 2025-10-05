@@ -1,3 +1,5 @@
+
+
 const postModel = require("../models/postModel");
 
 const createPost = async (req, res) => {
@@ -27,8 +29,22 @@ const createPost = async (req, res) => {
 
 const getAllPosts = async (req, res) => {
   try {
-    // MODIFIED: ONLY fetch posts with statusCode '2' (Published) for the global feed.
-    const posts = await postModel.find({ statusCode: '2' }) 
+    // MODIFIED: Dynamically fetch posts.
+    // Fetches all published posts ('2') PLUS the current user's draft ('0') and pending ('1') posts.
+    let query = {
+      statusCode: '2'
+    };
+
+    if (req.user && req.user._id) {
+      query = {
+        $or: [
+          { statusCode: '2' }, // Everyone sees published posts
+          { author: req.user._id, statusCode: { $in: ['0', '1'] } } // The logged-in user sees their own drafts and pending posts
+        ]
+      };
+    }
+
+    const posts = await postModel.find(query)
       .populate('author', 'username _id')
       .sort({ createdAt: -1 });
       
@@ -38,6 +54,7 @@ const getAllPosts = async (req, res) => {
     res.status(500).json({ message: "Error fetching posts" });
   }
 };
+
 
 const getPostById = async (req, res) => {
   try {
