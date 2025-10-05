@@ -30,34 +30,33 @@ const createPost = async (req, res) => {
 const getAllPosts = async (req, res) => {
   try {
     // 1. Get the authenticated user's ID
-    // req.user is set by your 'authenticate' middleware
+    // req.user is populated by your 'authenticate' middleware from the cookie.
     const userId = req.user ? req.user._id : null;
 
-    // 2. Define the base query logic using MongoDB's $or operator
-    // The query should fetch posts that meet AT LEAST ONE of the conditions below:
+    // 2. Define the base query conditions
+    // The query must fetch posts that meet AT LEAST ONE of the conditions below.
     let queryConditions = [
-      // Condition A: Fetch all "Published" posts (assuming '2' is published based on your comment)
+      // Condition 1: Fetch all "Published" posts (statusCode: '2') for everyone.
       { statusCode: '2' },
     ];
 
-    // Condition B: ONLY include the current user's draft/pending posts
-    // This is only added to the query if a user is logged in (userId exists)
+    // Condition 2: Add the user's private posts to the query IF the user is logged in.
     if (userId) {
       queryConditions.push({
         author: userId,
-        // Only fetch the current user's own Draft ('0') and Pending ('1') posts
+        // Only fetch the current user's own Draft ('0') and Pending ('1') posts.
         statusCode: { $in: ['0', '1'] }
       });
     }
 
-    // Combine all conditions into the main query object
+    // 3. Combine all conditions using the MongoDB $or operator
+    // The query will match any document that satisfies one of the objects in the array.
     let query = {
       $or: queryConditions
     };
 
-    // 3. Execute the final query
+    // 4. Execute the final query
     const posts = await postModel
-      // Find all posts matching the complex $or query
       .find(query)
       .populate('author', 'username _id')
       .sort({ createdAt: -1 });
@@ -68,7 +67,6 @@ const getAllPosts = async (req, res) => {
     res.status(500).json({ message: "Error fetching posts" });
   }
 };
-
 
 const getPostById = async (req, res) => {
   try {
