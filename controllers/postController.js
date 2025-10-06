@@ -152,6 +152,7 @@ const updatePost = async (req, res) => {
 };
 
 
+
 const deletePost = async (req, res) => {
   try {
     const postId = req.params.postId;
@@ -162,24 +163,40 @@ const deletePost = async (req, res) => {
     }
     
     // --- AUTHORIZATION LOGIC ---
-    // 1. Check if req.user exists (set by your 'authenticate' middleware)
     if (!req.user || !req.user._id) {
         return res.status(401).json({ message: "Authentication required." });
     }
 
-    // Safely get and convert the user's level to a number (e.g., '7' -> 7)
-    // If req.user.level is missing, it converts to NaN, which prevents unauthorized deletion.
     const userLevel = Number(req.user.level); 
-    
-    // Check if the user is the author OR has level 7 or higher
     const isAuthor = post.author.toString() === req.user._id.toString();
     const hasAdminRights = !isNaN(userLevel) && userLevel >= 7; 
     
-    // If not the author AND not admin, deny access.
-    if (!isAuthor && !hasAdminRights) {
-      // This returns the 403 Forbidden error you are seeing
+    const isPublished = post.statusCode === '2'; // NEW: Check if post is published
+
+    // 🔑 MODIFIED AUTHORIZATION LOGIC
+    // A user is authorized to delete if ANY of these are true:
+    // 1. They are the author AND the post is NOT published (i.e., Draft '0' or Pending '1').
+    // 2. They have Admin Rights AND they are NOT the author.
+    // 3. They have Admin Rights AND the post is NOT published (Allows a Level 7 to delete their own Draft).
+    const isAuthorized = 
+        (isAuthor && !isPublished) ||                  // 1. Author can delete their Draft/Pending post
+        (hasAdminRights && !isAuthor) ||               // 2. Admin can delete other users' posts (even published)
+        (hasAdminRights && isAuthor && !isPublished);  // 3. Admin can delete their own Draft/Pending post (redundant, but explicit)
+    
+    // Simplified:
+    // const isAuthorized = (isAuthor && !isPublished) || (hasAdminRights && !isAuthor); 
+    // This is the simplest way to enforce: Admin can delete others, Author can delete unpublished.
+    
+    // Using the simplified, clearer check:
+    const canAuthorDelete = isAuthor && !isPublished;
+    const canAdminDelete = hasAdminRights && !isAuthor;
+    
+    if (!canAuthorDelete && !canAdminDelete) {
+      // If the post is published and the user is the author, neither is true.
+      // If the user is a non-admin, non-author, neither is true.
       return res.status(403).json({ message: "You are not authorized to delete this post" });
     }
+    // END MODIFIED AUTHORIZATION LOGIC
 
     // --- EXECUTION ---
     await postModel.findByIdAndDelete(postId);
