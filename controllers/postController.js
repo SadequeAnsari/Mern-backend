@@ -27,18 +27,60 @@ const createPost = async (req, res) => {
 };
 
 
+// const getAllPosts = async (req, res) => {
+//   try {
+//  // TEMPORARY DEBUG: Check if the user ID is being read from the cookie
+//     console.log("Authenticated User ID in getAllPosts:", req.user ? req.user._id : "NOT AUTHENTICATED");
+
+//     // 1. Get the authenticated user's ID.
+//     // This relies on your 'authenticate' middleware successfully reading the cookie.
+//     const userId = req.user ? req.user._id : null; 
+
+//     // 2. Define the mandatory condition: Fetch all "Published" posts (statusCode: '2') for everyone.
+//     let queryConditions = [
+//       { statusCode: { $in: ['2', '3'] }},
+//     ];
+
+//     // 3. Add the author-only condition IF the user is logged in.
+//     if (userId) {
+//       queryConditions.push({
+//         author: userId,
+//         // Include the author's own drafted ('0') and edited/pending ('1') posts.
+//         statusCode: { $in: ['0', '1'] }
+//       });
+//     }
+
+//     // 4. Combine conditions using $or. If the user is logged in, this will be:
+//     // (statusCode === '2') OR (author === userId AND statusCode IN ('0', '1'))
+//     let query = {
+//       $or: queryConditions
+//     };
+
+//     // 5. Execute the final query
+//     const posts = await postModel
+//       .find(query)
+//       .populate('author', 'username _id')
+//       .sort({ createdAt: -1 });
+
+//     res.json(posts);
+//   } catch (error) {
+//     console.error("Error fetching all posts:", error);
+//     res.status(500).json({ message: "Error fetching posts" });
+//   }
+// };
+
+// postController.js
+
+// ... existing functions (createPost, getAllPosts, getPostById, etc.) ...
+
+// --- MODIFIED getAllPosts to include withdrawn posts ('3') ---
 const getAllPosts = async (req, res) => {
   try {
- // TEMPORARY DEBUG: Check if the user ID is being read from the cookie
-    console.log("Authenticated User ID in getAllPosts:", req.user ? req.user._id : "NOT AUTHENTICATED");
-
-    // 1. Get the authenticated user's ID.
-    // This relies on your 'authenticate' middleware successfully reading the cookie.
     const userId = req.user ? req.user._id : null; 
 
-    // 2. Define the mandatory condition: Fetch all "Published" posts (statusCode: '2') for everyone.
+    // 2. Define the mandatory condition: Fetch all "Published" ('2') and "Withdrawn" ('3') posts for everyone.
     let queryConditions = [
-      { statusCode: '2' },
+      { statusCode: { $in: ['2', '3'] } }, // MODIFIED: Include '3' (Withdrawn) posts for public view
     ];
 
     // 3. Add the author-only condition IF the user is logged in.
@@ -50,13 +92,11 @@ const getAllPosts = async (req, res) => {
       });
     }
 
-    // 4. Combine conditions using $or. If the user is logged in, this will be:
-    // (statusCode === '2') OR (author === userId AND statusCode IN ('0', '1'))
+    // 4. Combine conditions using $or.
     let query = {
       $or: queryConditions
     };
 
-    // 5. Execute the final query
     const posts = await postModel
       .find(query)
       .populate('author', 'username _id')
@@ -69,6 +109,41 @@ const getAllPosts = async (req, res) => {
   }
 };
 
+// --- NEW FUNCTION: withdrawPost ---
+const withdrawPost = async (req, res) => {
+  try {
+    const postId = req.params.postId;
+    const userId = req.user._id;
+
+    // 1. Find the post and check authorization
+    const post = await postModel.findById(postId);
+
+    if (!post) {
+      return res.status(404).json({ message: "Post not found" });
+    }
+
+    // Must be the author
+    if (post.author.toString() !== userId.toString()) {
+      return res.status(403).json({ message: "You are not authorized to withdraw this post." });
+    }
+
+    // Must be a published post (statusCode '2') to be withdrawn
+    if (post.statusCode !== '2') {
+        return res.status(400).json({ message: "Only published posts can be withdrawn." });
+    }
+
+    // 2. Update the status code to '3' (Withdrawn)
+    post.statusCode = '3';
+    await post.save();
+    
+    // 3. Populate and return the updated post
+    await post.populate('author', 'username _id');
+    res.json(post);
+  } catch (error) {
+    console.error("Error withdrawing post:", error);
+    res.status(500).json({ message: "Error withdrawing post" });
+  }
+};
 
 const getPostById = async (req, res) => {
   try {
@@ -152,7 +227,6 @@ const updatePost = async (req, res) => {
 };
 
 
-
 const deletePost = async (req, res) => {
   try {
     const postId = req.params.postId;
@@ -215,5 +289,6 @@ module.exports = {
   getPostById,
   updatePost,
   deletePost,
-  getPostsByAuthorId
+  getPostsByAuthorId,
+  withdrawPost
 };

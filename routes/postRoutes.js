@@ -17,6 +17,9 @@ router.get('/posts/user/:authorId', authenticate, postController.getPostsByAutho
 router.get('/posts/:postId', postController.getPostById); 
 
 router.put("/posts/:id", authenticate, postController.updatePost);
+
+router.put('/posts/:postId/withdraw', authenticate, postController.withdrawPost);
+
 router.delete("/posts/:postId", authenticate, postController.deletePost);
 
 module.exports = router;
