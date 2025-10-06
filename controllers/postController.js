@@ -27,53 +27,7 @@ const createPost = async (req, res) => {
 };
 
 
-// const getAllPosts = async (req, res) => {
-//   try {
-//  // TEMPORARY DEBUG: Check if the user ID is being read from the cookie
-//     console.log("Authenticated User ID in getAllPosts:", req.user ? req.user._id : "NOT AUTHENTICATED");
 
-//     // 1. Get the authenticated user's ID.
-//     // This relies on your 'authenticate' middleware successfully reading the cookie.
-//     const userId = req.user ? req.user._id : null; 
-
-//     // 2. Define the mandatory condition: Fetch all "Published" posts (statusCode: '2') for everyone.
-//     let queryConditions = [
-//       { statusCode: { $in: ['2', '3'] }},
-//     ];
-
-//     // 3. Add the author-only condition IF the user is logged in.
-//     if (userId) {
-//       queryConditions.push({
-//         author: userId,
-//         // Include the author's own drafted ('0') and edited/pending ('1') posts.
-//         statusCode: { $in: ['0', '1'] }
-//       });
-//     }
-
-//     // 4. Combine conditions using $or. If the user is logged in, this will be:
-//     // (statusCode === '2') OR (author === userId AND statusCode IN ('0', '1'))
-//     let query = {
-//       $or: queryConditions
-//     };
-
-//     // 5. Execute the final query
-//     const posts = await postModel
-//       .find(query)
-//       .populate('author', 'username _id')
-//       .sort({ createdAt: -1 });
-
-//     res.json(posts);
-//   } catch (error) {
-//     console.error("Error fetching all posts:", error);
-//     res.status(500).json({ message: "Error fetching posts" });
-//   }
-// };
-
-// postController.js
-
-// ... existing functions (createPost, getAllPosts, getPostById, etc.) ...
-
-// --- MODIFIED getAllPosts to include withdrawn posts ('3') ---
 const getAllPosts = async (req, res) => {
   try {
     const userId = req.user ? req.user._id : null; 
@@ -196,17 +150,24 @@ const getPostsByAuthorId = async (req, res) => {
 
 const updatePost = async (req, res) => {
   try {
-    const { id } = req.params;
-    const { content } = req.body;
+    // const { id } = req.params;
+    // const { content } = req.body;
+    const postId = req.params.id;
+    const { content, statusCode } = req.body;
+    const userId = req.user._id;
 
-    const post = await postModel.findById(id);
+    const post = await postModel.findById(postId);
 
     if (!post) {
       return res.status(404).json({ message: "Post not found" });
     }
 
+    if (post.statusCode === '3') {
+        return res.status(400).json({ message: "Withdrawn posts cannot be edited." });
+    }
+
     // Authorization Check: only author can edit
-    if (post.author.toString() !== req.user._id.toString()) {
+    if (post.author.toString() !== userId.toString()) {
       return res.status(403).json({ message: "You are not authorized to edit this post" });
     }
 
@@ -230,7 +191,9 @@ const updatePost = async (req, res) => {
 const deletePost = async (req, res) => {
   try {
     const postId = req.params.postId;
-    const post = await postModel.findById(postId);
+    const userId = req.user._id;
+
+    const post = await postModel.findById(postId).populate('author', 'level');
     
     if (!post) {
       return res.status(404).json({ message: "Post not found" });
@@ -242,10 +205,11 @@ const deletePost = async (req, res) => {
     }
 
     const userLevel = Number(req.user.level); 
-    const isAuthor = post.author.toString() === req.user._id.toString();
+    const isAuthor = post.author.toString() === userId.toString();
     const hasAdminRights = !isNaN(userLevel) && userLevel >= 7; 
     
     const isPublished = post.statusCode === '2'; // NEW: Check if post is published
+    const isWithdrawn = post.statusCode === '3';
 
     // 🔑 MODIFIED AUTHORIZATION LOGIC
     // A user is authorized to delete if ANY of these are true:
@@ -262,9 +226,13 @@ const deletePost = async (req, res) => {
     // This is the simplest way to enforce: Admin can delete others, Author can delete unpublished.
     
     // Using the simplified, clearer check:
-    const canAuthorDelete = isAuthor && !isPublished;
-    const canAdminDelete = hasAdminRights && !isAuthor;
+    const canAuthorDelete = isAuthor && !isPublished && !isWithdrawn;
+    const canAdminDelete = hasAdminRights && !isAuthor && !isWithdrawn;
     
+    if (isWithdrawn) {
+        return res.status(400).json({ message: "Withdrawn posts cannot be deleted." });
+    }
+
     if (!canAuthorDelete && !canAdminDelete) {
       // If the post is published and the user is the author, neither is true.
       // If the user is a non-admin, non-author, neither is true.
