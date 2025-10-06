@@ -148,10 +148,9 @@ const getPostsByAuthorId = async (req, res) => {
 
 
 
+
 const updatePost = async (req, res) => {
   try {
-    // const { id } = req.params;
-    // const { content } = req.body;
     const postId = req.params.id;
     const { content, statusCode } = req.body;
     const userId = req.user._id;
@@ -161,12 +160,9 @@ const updatePost = async (req, res) => {
     if (!post) {
       return res.status(404).json({ message: "Post not found" });
     }
-
     if (post.statusCode === '3') {
         return res.status(400).json({ message: "Withdrawn posts cannot be edited." });
     }
-
-    // Authorization Check: only author can edit
     if (post.author.toString() !== userId.toString()) {
       return res.status(403).json({ message: "You are not authorized to edit this post" });
     }
@@ -194,49 +190,31 @@ const deletePost = async (req, res) => {
     const userId = req.user._id;
 
     const post = await postModel.findById(postId).populate('author', 'level');
-    
+
     if (!post) {
       return res.status(404).json({ message: "Post not found" });
     }
-    
-    // --- AUTHORIZATION LOGIC ---
-    if (!req.user || !req.user._id) {
-        return res.status(401).json({ message: "Authentication required." });
-    }
 
-    const userLevel = Number(req.user.level); 
-    const isAuthor = post.author.toString() === userId.toString();
-    const hasAdminRights = !isNaN(userLevel) && userLevel >= 7; 
-    
-    const isPublished = post.statusCode === '2'; // NEW: Check if post is published
-    const isWithdrawn = post.statusCode === '3';
+    const isAuthor = post.author._id.toString() === userId.toString();
+    const hasAdminRights = parseInt(req.user.level) >= 7;
+    const isPublished = post.statusCode === '2';
+    // --- NEW: Check if the post is withdrawn ---
+    const isWithdrawn = post.statusCode === '3'; 
+    // ------------------------------------------
 
-    // 🔑 MODIFIED AUTHORIZATION LOGIC
-    // A user is authorized to delete if ANY of these are true:
-    // 1. They are the author AND the post is NOT published (i.e., Draft '0' or Pending '1').
-    // 2. They have Admin Rights AND they are NOT the author.
-    // 3. They have Admin Rights AND the post is NOT published (Allows a Level 7 to delete their own Draft).
-    const isAuthorized = 
-        (isAuthor && !isPublished) ||                  // 1. Author can delete their Draft/Pending post
-        (hasAdminRights && !isAuthor) ||               // 2. Admin can delete other users' posts (even published)
-        (hasAdminRights && isAuthor && !isPublished);  // 3. Admin can delete their own Draft/Pending post (redundant, but explicit)
-    
-    // Simplified:
-    // const isAuthorized = (isAuthor && !isPublished) || (hasAdminRights && !isAuthor); 
-    // This is the simplest way to enforce: Admin can delete others, Author can delete unpublished.
-    
-    // Using the simplified, clearer check:
+    // --- MODIFIED AUTHORIZATION LOGIC ---
+    // 1. Author can delete if it's not published AND not withdrawn. (i.e., it's '0' or '1')
     const canAuthorDelete = isAuthor && !isPublished && !isWithdrawn;
+    // 2. Admin can delete other users' posts if they have admin rights and are not the author. 
+    //    An admin should also be blocked from deleting a withdrawn post to prepare for the "repost" feature.
     const canAdminDelete = hasAdminRights && !isAuthor && !isWithdrawn;
     
     if (isWithdrawn) {
         return res.status(400).json({ message: "Withdrawn posts cannot be deleted." });
     }
-
+    
     if (!canAuthorDelete && !canAdminDelete) {
-      // If the post is published and the user is the author, neither is true.
-      // If the user is a non-admin, non-author, neither is true.
-      return res.status(403).json({ message: "You are not authorized to delete this post" });
+        return res.status(403).json({ message: "You are not authorized to delete this post." });
     }
     // END MODIFIED AUTHORIZATION LOGIC
 
