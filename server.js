@@ -14,7 +14,13 @@ const userRoutes = require('./routes/userRoutes');
 const { otps, verificationCodes } = require("./utils/inMemoryStore");
 
 // Connect to the database
-connectDB();
+// connectDB();
+app.use((req, res, next) => {
+    if (!isConnected) {
+      connectDB();
+  }
+  next();
+});
 
 // CORS setup
 // app.use(cors({
@@ -57,13 +63,15 @@ app.use(session({
 app.use(allRoutes);
 app.use('/api', userRoutes);
 
-const PORT = process.env.PORT || 4000;
+// const PORT = process.env.PORT || 4000;
 
 app.get('/', (req, res) => {
   res.send('API is running...');
 });
 
 
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-});
+// app.listen(PORT, () => {
+//   console.log(`Server is running on port ${PORT}`);
+// });
+
+module.exports = app
