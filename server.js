@@ -15,12 +15,12 @@ const { otps, verificationCodes } = require("./utils/inMemoryStore");
 
 // Connect to the database
 // connectDB();
-app.use((req, res, next) => {
-    if (!isConnected) {
+// app.use((req, res, next) => {
+    // if (!isConnected) {
       connectDB();
-  }
-  next();
-});
+  // }
+  // next();
+// });
 
 // CORS setup
 // app.use(cors({
